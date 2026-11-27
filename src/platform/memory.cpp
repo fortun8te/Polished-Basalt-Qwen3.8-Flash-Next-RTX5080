@@ -47,6 +47,11 @@ void enable_privilege(LPCWSTR name) {
     }
     CloseHandle(tok);
 }
+std::atomic<uint64_t>& locked_ws_bytes() {
+    static std::atomic<uint64_t> g_locked_ws_bytes{0};
+    return g_locked_ws_bytes;
+}
+
 }  // namespace
 #endif
 
@@ -59,22 +64,27 @@ LockResult lock_resident(void* p, uint64_t bytes, const LockProgress& progress) 
     HANDLE self = GetCurrentProcess();
     SIZE_T min_ws = 0, max_ws = 0;
     DWORD flags = 0;
-    // Locked pages count against the minimum working set, so it has to grow by the region plus room for the rest of
-    // the process first: VirtualLock can lock no more pages than that minimum holds. A quota that cannot be raised
-    // is reported and the lock tried anyway: whatever the existing quota covers is still worth having.
+    // Locked pages count against the minimum working set, so it has to grow to cover all locked regions plus one
+    // shared margin for the rest of the process (rather than stacking a fresh margin on every call): VirtualLock can
+    // lock no more pages than that minimum holds. A quota that cannot be raised is reported and the lock tried anyway:
+    // whatever the existing quota covers is still worth having.
+    auto& locked_ws = locked_ws_bytes();
     std::string quota_note;
     if (!GetProcessWorkingSetSizeEx(self, &min_ws, &max_ws, &flags)) {
         quota_note = "GetProcessWorkingSetSizeEx failed (error " + std::to_string(GetLastError()) + ")";
     } else {
         const SIZE_T margin = (SIZE_T) 512 << 20;
-        const SIZE_T new_min = min_ws + (SIZE_T) bytes + margin;
-        const SIZE_T new_max = max_ws > new_min + margin ? max_ws : new_min + margin;
-        // The minimum goes in as the hard limit: only a hard minimum keeps the locked pages from being trimmed back
-        // out. The maximum stays soft, so the process can still grow past it.
-        if (!SetProcessWorkingSetSizeEx(self, new_min, new_max,
-                                        QUOTA_LIMITS_HARDWS_MIN_ENABLE | QUOTA_LIMITS_HARDWS_MAX_DISABLE))
-            quota_note = "SetProcessWorkingSetSizeEx(" + std::to_string((unsigned long long) (new_min >> 20)) +
-                         " MiB) failed (error " + std::to_string(GetLastError()) + ")";
+        const uint64_t want_total = locked_ws.load(std::memory_order_relaxed) + bytes + (uint64_t) margin;
+        const SIZE_T want_min = (SIZE_T) want_total;
+        if (want_min > min_ws) {
+            const SIZE_T new_max = max_ws > want_min + margin ? max_ws : want_min + margin;
+            // The minimum goes in as the hard limit: only a hard minimum keeps the locked pages from being trimmed back
+            // out. The maximum stays soft, so the process can still grow past it.
+            if (!SetProcessWorkingSetSizeEx(self, want_min, new_max,
+                                            QUOTA_LIMITS_HARDWS_MIN_ENABLE | QUOTA_LIMITS_HARDWS_MAX_DISABLE))
+                quota_note = "SetProcessWorkingSetSizeEx(" + std::to_string((unsigned long long) (want_min >> 20)) +
+                             " MiB) failed (error " + std::to_string(GetLastError()) + ")";
+        }
     }
     // Chunked, because one call over the whole region loses everything past the first page that does not fit.
     const uint64_t chunk = progress ? 256ull << 20 : 1ull << 30;
@@ -82,6 +92,7 @@ LockResult lock_resident(void* p, uint64_t bytes, const LockProgress& progress) 
     for (uint64_t off = 0; off < bytes; off += chunk) {
         const uint64_t n = bytes - off < chunk ? bytes - off : chunk;
         if (!VirtualLock(base + off, (SIZE_T) n)) {
+            if (off > 0) locked_ws.fetch_add(off, std::memory_order_relaxed);
             r.note = (quota_note.empty() ? "" : quota_note + "; ") + "VirtualLock stopped at " +
                      std::to_string((unsigned long long) (off >> 20)) + " of " +
                      std::to_string((unsigned long long) (bytes >> 20)) + " MiB (error " +
@@ -92,6 +103,7 @@ LockResult lock_resident(void* p, uint64_t bytes, const LockProgress& progress) 
         r.locked_bytes = off + n;
         if (progress) progress(r.locked_bytes);
     }
+    locked_ws.fetch_add(r.locked_bytes, std::memory_order_relaxed);
     r.ok = true;
     const std::string locked = std::to_string((unsigned long long) (bytes >> 20)) + " MiB";
     r.note = quota_note.empty() ? "locked " + locked + " via working-set minimum + VirtualLock"
@@ -126,8 +138,14 @@ void unlock_resident(void* p, uint64_t bytes) {
     if (p == nullptr || bytes == 0) return;
 #if defined(_WIN32)
     const uint64_t chunk = 1ull << 30;
-    for (uint64_t off = 0; off < bytes; off += chunk)
-        VirtualUnlock((uint8_t*) p + off, (SIZE_T) (bytes - off < chunk ? bytes - off : chunk));
+    uint64_t unlocked = 0;
+    for (uint64_t off = 0; off < bytes; off += chunk) {
+        const uint64_t n = bytes - off < chunk ? bytes - off : chunk;
+        if (VirtualUnlock((uint8_t*) p + off, (SIZE_T) n)) unlocked += n;
+    }
+    auto& locked_ws = locked_ws_bytes();
+    uint64_t cur = locked_ws.load(std::memory_order_relaxed);
+    while (!locked_ws.compare_exchange_weak(cur, cur > unlocked ? cur - unlocked : 0, std::memory_order_relaxed)) {}
 #else
     munlock(p, bytes);
 #endif
