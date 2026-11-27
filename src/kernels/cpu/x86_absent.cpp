@@ -8,6 +8,7 @@
 #include "basalt/kernels/cpu/iq_avx2.hpp"
 #include "basalt/kernels/cpu/iq_avx512.hpp"
 #include "basalt/kernels/cpu/kq_avx2.hpp"
+#include "basalt/kernels/cpu/kq_avx512.hpp"
 #include "basalt/kernels/cpu/nvfp4_avx2.hpp"
 #include "basalt/kernels/cpu/nvfp4_avx512.hpp"
 #include "basalt/log.hpp"
@@ -80,6 +81,9 @@ void kq256_gu_rows(int, const uint8_t*, size_t, size_t, int, const void* const*,
     absent("kq256_gu_rows");
 }
 void kq256_rows(int, const uint8_t*, size_t, int, const void* const*, int, float* const*, int, int) { absent("kq256_rows"); }
+void kq512_q5_1_rows(const uint8_t*, size_t, int, const void* const*, int, float* const*, int, int) {
+    absent("kq512_q5_1_rows");
+}
 
 void q2_0_gguf_rows_multi(const uint8_t*, size_t, int, const ActQ* const*, int, float* const*, int, int) {
     absent("q2_0_gguf_rows_multi");

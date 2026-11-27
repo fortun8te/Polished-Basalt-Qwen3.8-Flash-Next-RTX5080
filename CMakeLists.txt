@@ -1847,7 +1847,7 @@ target_sources(kernels_cpu PRIVATE src/kernels/cpu/native_expert.cpp src/kernels
                                          src/kernels/cpu/nvfp4_avx2_dpbusd.cpp
                                          src/kernels/cpu/mxfp4_avx2.cpp src/kernels/cpu/mxfp4_avx2_vnni.cpp
                                          src/kernels/cpu/iq_avx2.cpp src/kernels/cpu/iq_avx2_vnni.cpp
-                                         src/kernels/cpu/kq_avx2.cpp
+                                         src/kernels/cpu/kq_avx2.cpp src/kernels/cpu/kq_avx512.cpp
                                          src/kernels/cpu/kq_avx1.cpp src/kernels/cpu/ggml/ggml_cpu_dispatch.cpp
                                          $<TARGET_OBJECTS:ggml_dots_avx2> $<TARGET_OBJECTS:ggml_dots_avx512>)
 # the i-quant rows also use BMI2 (pdep/pext for the sign masks; cpu_avx512_ok requires it). MSVC compiles the
@@ -1870,6 +1870,7 @@ set_source_files_properties(src/kernels/cpu/nvfp4_avx2_dpbusd.cpp PROPERTIES COM
 set_source_files_properties(src/kernels/cpu/mxfp4_avx2.cpp PROPERTIES COMPILE_OPTIONS "${_isa_avx2_flags}")
 set_source_files_properties(src/kernels/cpu/mxfp4_avx2_vnni.cpp PROPERTIES COMPILE_OPTIONS "${_isa_avxvnni_flags}")
 set_source_files_properties(src/kernels/cpu/kq_avx2.cpp PROPERTIES COMPILE_OPTIONS "${_isa_avx2_flags}")
+set_source_files_properties(src/kernels/cpu/kq_avx512.cpp PROPERTIES COMPILE_OPTIONS "${_isa_avx512_flags}")
 # the router lookahead's AVX1 dot (called behind cpu_avx1_ok)
 set_source_files_properties(src/kernels/cpu/kq_avx1.cpp PROPERTIES COMPILE_OPTIONS "${_isa_avx1_flags}")
 target_link_libraries(kernels_cpu PUBLIC ggml_quants)

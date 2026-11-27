@@ -6,6 +6,7 @@
 #include "basalt/kernels/cpu/iq_avx512.hpp"
 #include "basalt/kernels/cpu/iq_avx2.hpp"
 #include "basalt/kernels/cpu/kq_avx2.hpp"
+#include "basalt/kernels/cpu/kq_avx512.hpp"
 #include "basalt/kernels/cpu/nvfp4_avx512.hpp"
 #include "basalt/kernels/cpu/nvfp4_avx2.hpp"
 #include "basalt/kernels/cpu/mxfp4_avx2.hpp"
@@ -289,7 +290,13 @@ void native_down_rows(const NativeFmt& f, const uint8_t* blob, const void* const
         return;
     }
     const int n = (int) f.n_ff;
-    // Larger Q5_1 groups amortize the shared unpack; small groups keep the per-token dot.
+    static const bool avx512 = cpu_avx512_ok();
+    // Q5_1 down on AVX-512 VNNI: processes 2 blocks (64 weights) per iteration for all group sizes nt >= 1.
+    if (f.d_type == GGML_TYPE_Q5_1 && !f.tail && avx512) {
+        kq512_q5_1_rows(blob + f.down_off, f.d_row, n, hq, nt, out, r0, r1);
+        return;
+    }
+    // Larger Q5_1 groups amortize the shared unpack on AVX2; small groups keep the per-token dot.
     if (f.d_type == GGML_TYPE_Q5_1 && nt >= 3 && cpu_avx2_ok()) {
         kq256_rows(f.d_type, blob + f.down_off, f.d_row, n, hq, nt, out, r0, r1);
         return;
@@ -297,7 +304,6 @@ void native_down_rows(const NativeFmt& f, const uint8_t* blob, const void* const
     const ggml_vec_dot_t dot = traits(f.d_type)->vec_dot;
     float sd = 1.f;
     if (f.tail) std::memcpy(&sd, blob + f.bytes - f.tail + 8, 4);
-    static const bool avx512 = cpu_avx512_ok();
     if (avx512 && f.d_type == GGML_TYPE_NVFP4 && nvfp4_512_fits((int) f.n_embd, (int) f.n_ff)) {
         nvfp4_512_down_rows(blob + f.down_off, f.d_row, n, sd, hq, nt, out, r0, r1);
         return;
