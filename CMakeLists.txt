@@ -1877,7 +1877,7 @@ target_link_libraries(kernels_cpu PUBLIC ggml_quants)
 if(BASALT_ARM64)
   basalt_arm64_kernels_cpu()   # the NEON kernels in place of the x86 ones (cmake/arm64.cmake)
   # deferred to the end of this file, when every target and test exists: the x86 kernels' own tests are not built
-  cmake_language(DEFER CALL basalt_arm64_disable avx_bench iq_avx2_test iq_avx512_test nvfp4_cpu_rows_test router_dot_parity)
+  cmake_language(DEFER CALL basalt_arm64_disable avx_bench iq_avx2_test iq_avx512_test kq_avx512_test nvfp4_cpu_rows_test router_dot_parity)
 endif()
 if(BUILD_TESTING)
   # the router lookahead's dot on each rung this CPU has (AVX2, the older CPUs' AVX1) against a double reference
@@ -2202,6 +2202,10 @@ if(BUILD_TESTING)
   target_link_libraries(iq_avx512_test PRIVATE kernels_cpu platform)
   basalt_cpu_test(NAME iq_avx512_test COMMAND iq_avx512_test)
   set_property(TEST iq_avx512_test APPEND PROPERTY LABELS avx512)
+  add_executable(kq_avx512_test tests/kernels/cpu/kq_avx512_test.cpp)
+  target_link_libraries(kq_avx512_test PRIVATE kernels_cpu platform)
+  basalt_cpu_test(NAME kq_avx512_test COMMAND kq_avx512_test)
+  set_property(TEST kq_avx512_test APPEND PROPERTY LABELS avx512)
 
   # DirectFile has a Linux backend and a Windows backend, and this test covers those two; macOS is not a platform
   # the engine builds for.
