@@ -33,6 +33,11 @@ void prefer_oom_victim();
 /// such knob.
 bool keep_full_speed();
 
+/// Asks that the calling thread keep running at full speed (Windows ThreadPowerThrottling EcoQoS opt-out). Called once
+/// per CPU expert pool worker thread so the OS does not throttle background compute threads. True where the OS has no
+/// such knob.
+bool keep_thread_full_speed();
+
 /// Whether the GPU driver pages device memory out to system memory when a card is full, so that an allocation past
 /// the end succeeds and the work using it stalls, instead of failing the allocation.
 bool gpu_memory_pages();

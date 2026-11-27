@@ -9,6 +9,7 @@
 #include <chrono>
 #include "basalt/platform/compiler.hpp"
 #include "basalt/platform/cpu.hpp"
+#include "basalt/platform/system.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -149,6 +150,7 @@ void ExpertPool::publish() {
 }
 
 void ExpertPool::worker(int id) {
+    (void) basalt::platform::keep_thread_full_speed();
     uint32_t seen = 0;
     // ARRIVE at the park before the first wait, so `parked_ == n_` is true from construction: a
     // `set_active_workers` before the first batch waits for `parked_ == n_` and would otherwise never return.
