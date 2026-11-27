@@ -30,6 +30,12 @@ Same seeded fixtures for both columns. The experts stay lossless int8; a q4_0 ar
 - A fix for the warm-up state (`CpuWarm::blobs`, `n_blobs`) that was not reset between runs.
 - Tuned defaults for this machine: batch 1, prefill CPU share 0.45 (measured +9% prefill over 0.60), 7 workers, 384 MiB reserve, 8 speculative tokens.
 
+## Running it reliably on a 16 GB card
+
+- Set `CUDA_MODULE_LOADING=LAZY` before `basalt serve`. With eager loading every kernel module is resident at start, and at 262,144 tokens the expert cache then comes up about 4.8 GiB short ("no VRAM is left for the expert cache") and the server exits. With lazy loading the same config leaves 311 MiB free with everything loaded.
+- Start only when the card is empty (at least 15.5 GB free). A previous engine, especially one in WSL, can hold VRAM for several seconds after it exits; Basalt sizes its expert cache from what is free at start.
+- Keep a known-good build as a fallback: if this one exits within its first minutes, start the stock build with its stock settings.
+
 ## Run it
 
 Build and launch as described in the [upstream README](UPSTREAM_README.md), then use the measured settings for this machine: batch 1, int8 experts, `--prefill-cpu-share 0.45`, 7 CPU workers, a 384 MiB VRAM reserve and 8 speculative tokens. Run `basalt-probe` first on a different PC; it suggests the prefill CPU share for that hardware.
