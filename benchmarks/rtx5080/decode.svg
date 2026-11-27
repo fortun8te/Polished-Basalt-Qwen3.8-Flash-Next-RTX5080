@@ -1,0 +1,30 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 400' font-family='SF Pro Display,-apple-system,Inter,Segoe UI,Helvetica,Arial,sans-serif'>
+<rect width='900' height='400' rx='18' fill='#050505'/>
+<text x='28' y='40' fill='#ffffff' font-size='20' font-weight='650'>Decode speed</text>
+<text x='28' y='64' fill='#8a8a8e' font-size='13'>tok/s at 256K context, higher is better</text>
+<rect x='600' y='30' width='10' height='10' rx='2' fill='#48484a'/><text x='616' y='39' fill='#8a8a8e' font-size='12'>Basalt v0.5.7</text>
+<rect x='750' y='30' width='10' height='10' rx='2' fill='#ffffff'/><text x='766' y='39' fill='#8a8a8e' font-size='12'>Polished Basalt 0.5</text>
+<line x1='70' x2='872' y1='320.0' y2='320.0' stroke='#1c1c1e'/><text x='60' y='324.0' fill='#8a8a8e' font-size='11' text-anchor='end'>0</text>
+<line x1='70' x2='872' y1='267.5' y2='267.5' stroke='#1c1c1e'/><text x='60' y='271.5' fill='#8a8a8e' font-size='11' text-anchor='end'>50</text>
+<line x1='70' x2='872' y1='215.0' y2='215.0' stroke='#1c1c1e'/><text x='60' y='219.0' fill='#8a8a8e' font-size='11' text-anchor='end'>100</text>
+<line x1='70' x2='872' y1='162.5' y2='162.5' stroke='#1c1c1e'/><text x='60' y='166.5' fill='#8a8a8e' font-size='11' text-anchor='end'>150</text>
+<line x1='70' x2='872' y1='110.0' y2='110.0' stroke='#1c1c1e'/><text x='60' y='114.0' fill='#8a8a8e' font-size='11' text-anchor='end'>200</text>
+<rect x='134.2' y='210.4' width='69.5' height='109.6' rx='4' fill='#48484a'/>
+<text x='168.9' y='203.4' fill='#8a8a8e' font-size='12' text-anchor='middle'>104.4</text>
+<rect x='209.7' y='202.7' width='69.5' height='117.3' rx='4' fill='#ffffff'/>
+<text x='244.4' y='195.7' fill='#ffffff' font-size='12' text-anchor='middle'>111.7</text>
+<text x='206.7' y='344' fill='#ffffff' font-size='13' font-weight='600' text-anchor='middle'>Conversation</text>
+<text x='206.7' y='364' fill='#ffffff' font-size='12.5' font-weight='700' text-anchor='middle'>+7.0%</text>
+<rect x='401.5' y='151.9' width='69.5' height='168.1' rx='4' fill='#48484a'/>
+<text x='436.2' y='144.9' fill='#8a8a8e' font-size='12' text-anchor='middle'>160.1</text>
+<rect x='477.0' y='135.8' width='69.5' height='184.2' rx='4' fill='#ffffff'/>
+<text x='511.8' y='128.8' fill='#ffffff' font-size='12' text-anchor='middle'>175.4</text>
+<text x='474.0' y='344' fill='#ffffff' font-size='13' font-weight='600' text-anchor='middle'>Structured</text>
+<text x='474.0' y='364' fill='#ffffff' font-size='12.5' font-weight='700' text-anchor='middle'>+9.6%</text>
+<rect x='668.8' y='205.1' width='69.5' height='114.9' rx='4' fill='#48484a'/>
+<text x='703.6' y='198.1' fill='#8a8a8e' font-size='12' text-anchor='middle'>109.4</text>
+<rect x='744.3' y='192.9' width='69.5' height='127.0' rx='4' fill='#ffffff'/>
+<text x='779.1' y='185.9' fill='#ffffff' font-size='12' text-anchor='middle'>121.0</text>
+<text x='741.3' y='344' fill='#ffffff' font-size='13' font-weight='600' text-anchor='middle'>Prose</text>
+<text x='741.3' y='364' fill='#ffffff' font-size='12.5' font-weight='700' text-anchor='middle'>+10.6%</text>
+</svg>

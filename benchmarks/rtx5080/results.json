@@ -1,0 +1,10 @@
+{
+  "gpu": "GeForce RTX 5080 16 GB, 250 W, Ryzen 7 9800X3D (SMT off), 128 GB RAM, native Windows",
+  "model": "Qwen 3.8 Flash-Next, 262,144-token window, lossless int8 experts",
+  "date": "2026-11-27",
+  "method": "Same seeded fixtures (--seed 5080) for both columns. Control: Basalt v0.5.7 live config (batch 2, int8, prefill-cpu-share 0.60, workers 6, reserve 512). Polished Basalt 0.5 aadeea3f: batch 1, int8, prefill-cpu-share 0.45, workers 7, reserve 384, spec 8.",
+  "columns": ["Basalt v0.5.7", "Polished Basalt 0.5"],
+  "decode_tps": {"Conversation": [104.4, 111.7], "Structured": [160.1, 175.4], "Prose": [109.4, 121.0]},
+  "prefill_tps": {"16K prompt": [4273, 4308], "64K prompt": [4377, 4416]},
+  "ready_s": [37, 33]
+}
