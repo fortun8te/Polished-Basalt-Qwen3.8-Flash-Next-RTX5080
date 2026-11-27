@@ -1,4 +1,6 @@
-# Polished Basalt 0.5
+<p align="center"><img src="assets/polished-basalt/block.png" alt="A Polished Basalt block" width="160"></p>
+
+# Polished Basalt 0.5 · Qwen 3.8 Flash-Next on one RTX 5080
 
 A personal [Basalt](https://github.com/jesdga95/basalt) fork tuned for one RTX 5080 (16 GB, 250 W), a Ryzen 7 9800X3D and 128 GB RAM on native Windows, serving Qwen 3.8 Flash-Next with a 262,144-token window. Basalt descends from [Strata](https://github.com/Niko1221/Strata); both projects keep their credits and licences.
 
