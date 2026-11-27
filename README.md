@@ -30,8 +30,4 @@ Same seeded fixtures for both columns. The experts stay lossless int8; a q4_0 ar
 
 ## Run it
 
-```text
-basalt.exe --model <Qwen3.8-Flash-Next.gguf> --ctx 262144 --batch 1 --prefill-cpu-share 0.45 --workers 7 --reserve-mib 384 --spec 8
-```
-
-Build and general usage are in the [upstream README](UPSTREAM_README.md).
+Build and launch as described in the [upstream README](UPSTREAM_README.md), then use the measured settings for this machine: batch 1, int8 experts, `--prefill-cpu-share 0.45`, 7 CPU workers, a 384 MiB VRAM reserve and 8 speculative tokens. Run `basalt-probe` first on a different PC; it suggests the prefill CPU share for that hardware.
