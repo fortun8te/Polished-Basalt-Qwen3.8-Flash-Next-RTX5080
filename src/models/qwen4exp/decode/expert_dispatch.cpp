@@ -149,15 +149,15 @@ void expert_pool_dispatch_multi(ExpertDispatch& d, const float* x_f, const int32
                 } else if (d.peer != nullptr && d.peer->has(d.layers, e)) {
                     kd = 2;                        // multi-GPU: the second GPU computes it
                 } else {
-                    if (miss_rank >= nmiss - m && fetches < P.staging_cap && fetches < 64) {
-                        const uint8_t* src = d.src->pinned(d.layers, e) ? d.src->blob(d.layers, e) : nullptr;
-                        if (src != nullptr) {
+                    const uint8_t* src = d.src->pinned(d.layers, e) ? d.src->blob(d.layers, e) : nullptr;
+                    if (src != nullptr) {
+                        if (miss_rank >= nmiss - m && fetches < P.staging_cap && fetches < 64) {
                             kd = 1;
                             pcie_i0[fetches] = i0;
                             ++fetches;
                         }
+                        ++miss_rank;
                     }
-                    ++miss_rank;
                 }
             }
             for (int64_t i = i0; i < n; ++i)

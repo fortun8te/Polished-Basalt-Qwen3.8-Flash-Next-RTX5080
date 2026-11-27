@@ -209,9 +209,12 @@ bool Verifier::dm_init(std::string& err) {
         (int) std::min<int64_t>(kDmStageMax, (int64_t) (kStagingBlobs * (int64_t) lay.max_blob) / stride);
     if (stage && stage_slots >= 1) {
         // per layer: the pool's experts after its doorbell, the staged ones after the copy, their own launches and
-        // the combine's wait for them
-        constexpr double kPoolBytesPerUs = 45e3, kLinkBytesPerUs = 18e3, kPoolFixUs = 15.0, kStageFixUs = 35.0;
-        const double cpu_us = (double) blob / kPoolBytesPerUs, link_us = (double) blob / kLinkBytesPerUs;
+        // the combine's wait for them.  Use the probed H2D link bandwidth (discounted 0.85x for concurrent CPU+DMA
+        // host-memory contention) instead of a fixed 18 GB/s so PCIe 4.0/5.0 x16 cards share decode misses properly.
+        constexpr double kPoolBytesPerUs = 45e3, kDefaultLinkBytesPerUs = 18e3, kPoolFixUs = 15.0, kStageFixUs = 35.0;
+        const double link_bpus =
+            link_gbps_ > 0.0 ? std::clamp(link_gbps_ * 0.85, 10.0, 60.0) * 1e3 : kDefaultLinkBytesPerUs;
+        const double cpu_us = (double) blob / kPoolBytesPerUs, link_us = (double) blob / link_bpus;
         std::vector<int32_t> kt((size_t) kDmCap + 1, 0);
         for (int m = 1; m <= kDmCap; ++m) {
             double best = kPoolFixUs + m * cpu_us;
@@ -220,6 +223,10 @@ bool Verifier::dm_init(std::string& err) {
                 if (t < best) { best = t; kt[(size_t) m] = k; }
             }
         }
+        basalt::log::info("basalt verify",
+                          "staged miss split: link %.1f GB/s (probed %.1f), stage_slots %d, kt[10]=%d, kt[20]=%d",
+                          link_bpus / 1e3, link_gbps_, stage_slots,
+                          kDmCap >= 10 ? kt[10] : 0, kDmCap >= 20 ? kt[20] : 0);
         int st_least = 0, st_greatest = 0;   // the copy's blocks go first as the FFN read's leave the SMs
         bool sok = cudaMalloc((void**) &d->stage_src, (size_t) LE * 8) == cudaSuccess &&
                    cudaMemset(d->stage_src, 0, (size_t) LE * 8) == cudaSuccess &&
@@ -246,7 +253,8 @@ bool Verifier::dm_init(std::string& err) {
     }
     basalt::log::info("basalt verify", "the MoE tail planned on the device%s", served.c_str());
     if (d->warm != nullptr)
-        basalt::log::info("basalt verify", "the CPU pool warms its likeliest next-layer expert between doorbells");
+        basalt::log::info("basalt verify", "the CPU pool warms its top-%d likeliest next-layer experts between doorbells",
+                          CpuWarm::kWarmTopK);
     return true;
 }
 

@@ -126,6 +126,8 @@ public:
     /// the next layer's CPU experts (its router on this layer's FFN input) and read the likeliest into their caches.
     /// Before init; only with the device-planned MoE tail.
     void set_cpu_warm(basalt::kernels::cpu::ExpertPool* pool, ExpertSource* src) { warm_pool_ = pool; warm_src_ = src; }
+    /// Probed host->device PCIe bandwidth (GB/s) for sizing the device-planned staged miss split; 0 keeps the fallback.
+    void set_link_gbps(double gbps) { link_gbps_ = gbps; }
     /// Opt-in routing changes, each of which changes the output; before init, and only with the device-planned MoE
     /// tail (otherwise init switches them off).  Route tail skip: see `kernels::route_tail_skip` (0 = off).
     void set_route_tail_skip(int rank) { route_tail_skip_ = rank; }
@@ -384,6 +386,7 @@ private:
     std::vector<PeerExperts*> xpeers_;
     basalt::kernels::cpu::ExpertPool* warm_pool_ = nullptr;
     ExpertSource* warm_src_ = nullptr;
+    double link_gbps_ = 0.0;
     DecMoe* dm_ = nullptr;   // the device-planned MoE tail (null: off)
     bool dm_init(std::string& err);
     // the head split by vocabulary with the peer card, when the peer streams its rows faster than CUDA0 does

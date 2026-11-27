@@ -96,10 +96,32 @@ void warm_select(CpuWarm& c) {
             score[e] += w[j] / sum;
         }
     }
-    int best = -1;
-    for (int e = 0; e < NE; ++e)
-        if (score[e] > 0.0f && (best < 0 || score[e] > score[best])) best = e;
-    c.blob = best >= 0 ? c.src->resident_blob(c.layer, best) : nullptr;
+    // Pick up to kWarmTopK highest-scoring CPU-resident experts with a mapped RAM copy (passing over any expert
+    // without a RAM copy instead of stopping).  On single-CCD 3D V-Cache CPUs (96 MB L3) warming the top 3 (~7 MB)
+    // improves next-layer L3 hit rate without thrashing.
+    int top_e[CpuWarm::kWarmTopK];
+    float top_s[CpuWarm::kWarmTopK];
+    const uint8_t* top_b[CpuWarm::kWarmTopK];
+    int nb = 0;
+    for (int e = 0; e < NE; ++e) {
+        const float s = score[e];
+        if (s <= 0.0f) continue;
+        if (nb == CpuWarm::kWarmTopK && s <= top_s[CpuWarm::kWarmTopK - 1]) continue;
+        const uint8_t* b = c.src->resident_blob(c.layer, e);
+        if (b == nullptr) continue;
+        int j = nb < CpuWarm::kWarmTopK ? nb++ : CpuWarm::kWarmTopK - 1;
+        while (j > 0 && top_s[j - 1] < s) {
+            top_s[j] = top_s[j - 1];
+            top_e[j] = top_e[j - 1];
+            top_b[j] = top_b[j - 1];
+            --j;
+        }
+        top_s[j] = s;
+        top_e[j] = e;
+        top_b[j] = b;
+    }
+    c.n_blobs = nb;
+    for (int i = 0; i < nb; ++i) c.blobs[i] = top_b[i];
 }
 
 void warm_job(void* ctx, int w, int W, const std::atomic<bool>& stop) {
@@ -114,19 +136,23 @@ void warm_job(void* ctx, int w, int W, const std::atomic<bool>& stop) {
             basalt::platform::cpu_relax();
         }
     }
-    // this worker's share of the blob, one load per line: the gate and up rows first (computed first), then the down
-    // rows, so a read the doorbell cuts short has warmed the start of the computation
-    if (c.blob == nullptr) return;
+    // this worker's share of each predicted blob in priority order: gate/up rows first (computed first), then down
+    // rows, so a read the doorbell cuts short has warmed the highest-probability experts' start first.
+    if (c.n_blobs == 0) return;
     uint64_t x = 0;
-    for (int part = 0; part < 2; ++part) {
-        const size_t r0 = part == 0 ? 0 : c.down_off, r1 = part == 0 ? c.down_off : c.bytes;
-        const size_t per = ((r1 - r0 + (size_t) W - 1) / (size_t) W + 63) & ~(size_t) 63;
-        const size_t b0 = std::min(r1, r0 + per * (size_t) w), b1 = std::min(r1, b0 + per);
-        for (size_t o = b0; o < b1; o += 4096) {
-            if (stop.load(std::memory_order_relaxed)) { part = 2; break; }
-            const uint8_t* p = c.blob + o;
-            const size_t n = std::min<size_t>(4096, b1 - o);
-            for (size_t q = 0; q + 8 <= n; q += 64) x += *(const volatile uint64_t*) (p + q);
+    for (int bi = 0; bi < c.n_blobs; ++bi) {
+        const uint8_t* blob = c.blobs[bi];
+        if (blob == nullptr) continue;
+        for (int part = 0; part < 2; ++part) {
+            const size_t r0 = part == 0 ? 0 : c.down_off, r1 = part == 0 ? c.down_off : c.bytes;
+            const size_t per = ((r1 - r0 + (size_t) W - 1) / (size_t) W + 63) & ~(size_t) 63;
+            const size_t b0 = std::min(r1, r0 + per * (size_t) w), b1 = std::min(r1, b0 + per);
+            for (size_t o = b0; o < b1; o += 4096) {
+                if (stop.load(std::memory_order_relaxed)) { bi = c.n_blobs; part = 2; break; }
+                const uint8_t* p = blob + o;
+                const size_t n = std::min<size_t>(4096, b1 - o);
+                for (size_t q = 0; q + 8 <= n; q += 64) x += *(const volatile uint64_t*) (p + q);
+            }
         }
     }
     if (x == 0x9e3779b97f4a7c15ull) c.sink.fetch_add(x, std::memory_order_relaxed);   // keeps the loads

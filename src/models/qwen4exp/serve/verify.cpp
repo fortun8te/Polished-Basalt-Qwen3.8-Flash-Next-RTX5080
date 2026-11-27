@@ -158,6 +158,7 @@ int QfnRuntime::init_verify() {
     for (const auto& xpe : xpeers)
         if (xpe->valid()) ver.add_peer(xpe.get());
     ver.set_cpu_warm(drive.d.pool, drive.d.src);
+    ver.set_link_gbps(main_link_gbps);
     if (!ver.init(wt, g, ss, vh, native_head.loaded() ? &native_head : nullptr, std::max({o.spec, o.batch, 2}), err) ||
         (mtp_on && !mtp.bind(wt, multi_gpu ? &mtp_head : &native_head, ver.final_R_all(), err))) {
         basalt::log::error("basalt serve", "%s", err.c_str());

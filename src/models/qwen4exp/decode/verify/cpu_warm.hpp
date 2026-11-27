@@ -30,7 +30,9 @@ struct CpuWarm {
     std::vector<float> logits;                        ///< [kVerifyMaxT][n_expert]
     alignas(64) std::atomic<int> arrive{0};
     alignas(64) std::atomic<int> ready{0};
-    const uint8_t* blob = nullptr;                    ///< the expert to read, or null
+    static constexpr int kWarmTopK = 3;
+    const uint8_t* blobs[kWarmTopK] = {};             ///< top-K likeliest next-layer RAM experts to read into L3
+    int n_blobs = 0;
     std::atomic<uint64_t> sink{0};
 };
 
